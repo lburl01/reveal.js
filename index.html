@@ -109,12 +109,28 @@
 
 				<section>
 					<section>
-						<h2>Sending/Receiving Messages & Creating Conversations</h2>
+						<h2>Models</h2>
+					</section>
+					<section>
+						<h3>User Model</h3>
+						<p>Aliasing!</p>
+						<pre class="stretch hljs" data-trim contenteditable><code>#app/models/user.rb
+
+class User < ApplicationRecord
+  include Messageable
+
+  has_many :posted_jobs, :class_name => "Job", foreign_key: "family_id"
+  has_many :assignments, :class_name => "Job", foreign_key: "sitter_id"
+  has_many :sent_messages, :class_name => "Message", foreign_key: "user_id"
+  has_many :received_messages, :class_name => "Message", foreign_key: "recipient_id"
+  has_many :conversations
+
+	...
+end</code></pre>
 					</section>
 					<section>
 						<h3>Message Model</h3>
-						<p>Aliasing!</p>
-						<pre class="stretch"><code>#app/models/message.rb
+						<pre class="stretch hljs" data-trim contenteditable><code>#app/models/message.rb
 
 class Message < ApplicationRecord
   belongs_to :conversation
@@ -129,7 +145,8 @@ end
 					</section>
 					<section>
 						<h3>Conversation Model</h3>
-						<pre class="stretch"><code>#app/models/conversation.rb
+						<pre class="stretch hljs" data-trim contenteditable><code>#app/models/conversation.rb
+
 class Conversation < ApplicationRecord
 
   belongs_to :sender, :foreign_key => :sender_id,
@@ -143,7 +160,8 @@ end</code></pre>
 					</section>
 					<section>
 						<h3>Messageable Module</h3>
-						<pre class="stretch"><code>#app/models/messageable.rb
+						<pre class="stretch hljs" data-trim contenteditable><code>#app/models/messageable.rb
+
 module Messageable
 
 	def send_message(recipient, msg_body, subject)
@@ -185,85 +203,102 @@ end
 				</section>
 
 				<section>
-					<h2>Read & Unread</h2>
+					<section>
+						<h2>Controllers</h2>
+					</section>
+					<section>
+						<h3>Conversations Controller</h3>
+						<pre class="stretch hljs" data-trim contenteditable><code>#app/controllers/conversations_controller.rb
+
+class ConversationsController < ApplicationController
+
+  def index
+    @conversations = Conversation.get_user_conversations(current_user)
+
+    render json: @conversations
+  end
+
+  def show
+    @conversation = Conversation.get_conversation(params[:id], current_user)
+
+    render json: @conversation
+  end
+
+	...
+end</code></pre>
+					</section>
+					<section>
+						<h3>#get_conversation</h3>
+						<pre class="stretch hljs" data-trim contenteditable><code>#app/models/conversation.rb
+
+def self.get_conversation(options, current_user)
+  convo = Conversation.find(options)
+
+  if convo.sender_id == current_user.id
+    convo.update_attribute(:sender_read, true)
+  elsif convo.recipient_id == current_user.id
+    convo.update_attribute(:recipient_read, true)
+  end
+
+  sender_name = "#{convo.sender.first_name} #{convo.sender.last_name}"
+  recipient_name = "#{convo.recipient.first_name} #{convo.recipient.last_name}"
+
+  @conversation = { "id" => convo.id, "subject" => convo.subject,
+                    "sender_id" => convo.sender_id, "sender_name" => sender_name,
+                    "recipient_id" => convo.recipient_id,
+                    "recipient_name" => recipient_name, "sender_read" => convo.sender_read,
+                    "recipient_read" => convo.recipient_read,
+                    "created_at" => convo.created_at.strftime("%m/%d/%Y %I:%M %p")}
+end</code></pre>
+					</section>
+					<section>
+						<h3>Messages Controller</h3>
+						<pre class="stretch hljs" data-trim contenteditable><code>#app/controllers/messages_controller.rb
+
+class MessagesController < ApplicationController
+
+  def index
+    @conversation = Conversation.find(params[:conversation_id])
+    @convo_read = Conversation.get_conversation(params[:conversation_id], current_user)
+    @messages = Message.get_messages(@conversation)
+
+    render json: @messages
+  end
+
+  def show
+    @message = Message.show_message(params[:id])
+
+    render json: @message
+  end
+
+  def new
+    @message = Message.new
+  end
+
+  def create
+    recipient = User.find(params[:id])
+    sender = current_user
+    conversation = sender.send_message(recipient, params[:body],
+                                       params[:subject])
+  end
+
+  def toggle_deleted_message
+    message = Message.find(params[:id])
+    message.toggle!(:is_deleted)
+  end
+
+  def get_possible_recipients
+    @recipients = User.get_recipients
+
+    render json: @recipients
+  end
+
+end</code></pre>
+					</section>
 				</section>
 
 				<section>
-					<h2>Pretty Code</h2>
-					<pre><code class="hljs" data-trim contenteditable>
-function linkify( selector ) {
-  if( supports3DTransforms ) {
-
-    var nodes = document.querySelectorAll( selector );
-
-    for( var i = 0, len = nodes.length; i &lt; len; i++ ) {
-      var node = nodes[i];
-
-      if( !node.className ) {
-        node.className += ' roll';
-      }
-    }
-  }
-}
-					</code></pre>
-					<p>Code syntax highlighting courtesy of <a href="http://softwaremaniacs.org/soft/highlight/en/description/">highlight.js</a>.</p>
-				</section>
-
-				<section>
-					<h2>Tabular Tables</h2>
-					<table>
-						<thead>
-							<tr>
-								<th>Item</th>
-								<th>Value</th>
-								<th>Quantity</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr>
-								<td>Apples</td>
-								<td>$1</td>
-								<td>7</td>
-							</tr>
-							<tr>
-								<td>Lemonade</td>
-								<td>$2</td>
-								<td>18</td>
-							</tr>
-							<tr>
-								<td>Bread</td>
-								<td>$3</td>
-								<td>2</td>
-							</tr>
-						</tbody>
-					</table>
-				</section>
-
-				<section>
-					<h2>Export to PDF</h2>
-					<p>Presentations can be <a href="https://github.com/hakimel/reveal.js#pdf-export">exported to PDF</a>, here's an example:</p>
-					<iframe data-src="https://www.slideshare.net/slideshow/embed_code/42840540" width="445" height="355" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="border:3px solid #666; margin-bottom:5px; max-width: 100%;" allowfullscreen> </iframe>
-				</section>
-
-				<section>
-					<h2>Global State</h2>
-					<p>
-						Set <code>data-state="something"</code> on a slide and <code>"something"</code>
-						will be added as a class to the document element when the slide is open. This lets you
-						apply broader style changes, like switching the page background.
-					</p>
-				</section>
-
-				<section data-state="customevent">
-					<h2>State Events</h2>
-					<p>
-						Additionally custom events can be triggered on a per slide basis by binding to the <code>data-state</code> name.
-					</p>
-					<pre><code class="javascript" data-trim contenteditable style="font-size: 18px;">
-Reveal.addEventListener( 'customevent', function() {
-	console.log( '"customevent" has fired' );
-} );
-					</code></pre>
+					<h3>The End</h3>
 				</section>
 
 			</div>

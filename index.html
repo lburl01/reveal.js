@@ -49,13 +49,12 @@
 
 				<section>
 					<h2>Hello There</h2>
-					<p>
-						<ul>
-							<li>Graduated from Ruby on Rails program at The Iron Yard Dec. 2</li>
-							<li>Previously worked at the Museum of Life and Science in Marketing and Graphic Design</li>
-							<li>Let's talk about that time I decided to reinvent email during my final project at TIY...</li>
-						</ul>
-					</p>
+					<table>
+						<tr>
+							<td><img src="imgs/TIY-logo-thumb-WHITE.jpg" alt="iron-yard-logo"></td>
+							<td><img src="imgs/lifeandscience.png" alt="lifeandscience"></td>
+						</tr>
+					</table>
 				</section>
 
 				<section data-background="imgs/NannyDash.png">
@@ -85,10 +84,6 @@
 						<p>Good place to demo and consider other ideas my team hadn't yet thought of/considered.</p>
 						<p>Trashcan? What about deleting?</p>
 					</section>
-					<section>
-						<h2>Going Rogue</h2>
-						<p>With half our project time left, I took a chance and decided to create our app's messaging system by hand.</p>
-					</section>
 				</section>
 
 				<section>
@@ -103,42 +98,94 @@
 						</ul>
 					</section>
 					<section>
-						<h2>Conversations</h2>
-						<p><img data-src="imgs/ConversationsTable.png"></p>
+						<h3>Conversations Table</h3>
+						<p><img class="stretch" data-src="imgs/ConversationsTable.png"></p>
 					</section>
 					<section>
-						<h2>Messages</h2>
-						<p><img data-src="imgs/MessagesTable.png"></p>
+						<h3>Messages Table</h3>
+						<p><img class="stretch" data-src="imgs/MessagesTable.png"></p>
 					</section>
 				</section>
 
 				<section>
-					<section data-background="#dddddd">
-						<h2>Slide Backgrounds</h2>
-						<p>
-							Set <code>data-background="#dddddd"</code> on a slide to change the background color. All CSS color formats are supported.
-						</p>
-						<a href="#" class="navigate-down">
-							<img width="178" height="238" data-src="https://s3.amazonaws.com/hakim-static/reveal-js/arrow.png" alt="Down arrow">
-						</a>
+					<section>
+						<h2>Sending/Receiving Messages & Creating Conversations</h2>
 					</section>
-					<section data-background="https://s3.amazonaws.com/hakim-static/reveal-js/image-placeholder.png">
-						<h2>Image Backgrounds</h2>
-						<pre><code class="hljs">&lt;section data-background="image.png"&gt;</code></pre>
+					<section>
+						<h3>Message Model</h3>
+						<p>Aliasing!</p>
+						<pre class="stretch"><code>#app/models/message.rb
+
+class Message < ApplicationRecord
+  belongs_to :conversation
+  belongs_to :sent_message, :foreign_key => :user_id,
+		class_name: 'User'
+  belongs_to :received_message, :foreign_key => :recipient_id,
+		class_name: 'User'
+
+	...
+end
+</code></pre>
 					</section>
-					<section data-background="https://s3.amazonaws.com/hakim-static/reveal-js/image-placeholder.png" data-background-repeat="repeat" data-background-size="100px">
-						<h2>Tiled Backgrounds</h2>
-						<pre><code class="hljs" style="word-wrap: break-word;">&lt;section data-background="image.png" data-background-repeat="repeat" data-background-size="100px"&gt;</code></pre>
+					<section>
+						<h3>Conversation Model</h3>
+						<pre class="stretch"><code>#app/models/conversation.rb
+class Conversation < ApplicationRecord
+
+  belongs_to :sender, :foreign_key => :sender_id,
+		class_name: 'User'
+  belongs_to :recipient, :foreign_key => :recipient_id,
+		class_name: 'User'
+  has_many :messages, dependent: :destroy
+
+	...
+end</code></pre>
 					</section>
-					<section data-background-video="https://s3.amazonaws.com/static.slid.es/site/homepage/v1/homepage-video-editor.mp4,https://s3.amazonaws.com/static.slid.es/site/homepage/v1/homepage-video-editor.webm" data-background-color="#000000">
-						<div style="background-color: rgba(0, 0, 0, 0.9); color: #fff; padding: 20px;">
-							<h2>Video Backgrounds</h2>
-							<pre><code class="hljs" style="word-wrap: break-word;">&lt;section data-background-video="video.mp4,video.webm"&gt;</code></pre>
-						</div>
+					<section>
+						<h3>Messageable Module</h3>
+						<pre class="stretch"><code>#app/models/messageable.rb
+module Messageable
+
+	def send_message(recipient, msg_body, subject)
+	    convo = Conversation.where({recipient_id: self.id,
+	sender_id: recipient.id}).or(Conversation.where({recipient_id: recipient.id,
+	sender_id: self.id})).first
+
+	    if convo.nil?
+	      convo = Conversation.create!(
+	        recipient: recipient,
+	        recipient_read: false,
+	        sender_read: true,
+	        sender: self,
+	        subject: subject
+	      )
+	    else
+	      if convo.sender_id == self.id
+	        convo.update_attributes(sender_read: false,
+					recipient_read: false)
+	      else
+	        convo.update_attributes(sender_read: false,
+					recipient_read: false)
+	      end
+	    end
+
+	    message = Message.create!({
+	      :user_id         => self.id,
+	      :recipient_id    => recipient.id,
+	      :conversation_id => convo.id,
+	      :body            => msg_body,
+	      :subject         => subject
+	    })
+
+	  end
+
+end
+</code></pre>
 					</section>
-					<section data-background="http://i.giphy.com/90F8aUepslB84.gif">
-						<h2>... and GIFs!</h2>
-					</section>
+				</section>
+
+				<section>
+					<h2>Read & Unread</h2>
 				</section>
 
 				<section>
@@ -160,25 +207,6 @@ function linkify( selector ) {
 }
 					</code></pre>
 					<p>Code syntax highlighting courtesy of <a href="http://softwaremaniacs.org/soft/highlight/en/description/">highlight.js</a>.</p>
-				</section>
-
-				<section>
-					<h2>Marvelous List</h2>
-					<ul>
-						<li>No order here</li>
-						<li>Or here</li>
-						<li>Or here</li>
-						<li>Or here</li>
-					</ul>
-				</section>
-
-				<section>
-					<h2>Fantastic Ordered List</h2>
-					<ol>
-						<li>One is smaller than...</li>
-						<li>Two is smaller than...</li>
-						<li>Three!</li>
-					</ol>
 				</section>
 
 				<section>
@@ -212,36 +240,6 @@ function linkify( selector ) {
 				</section>
 
 				<section>
-					<h2>Clever Quotes</h2>
-					<p>
-						These guys come in two forms, inline: <q cite="http://searchservervirtualization.techtarget.com/definition/Our-Favorite-Technology-Quotations">
-						&ldquo;The nice thing about standards is that there are so many to choose from&rdquo;</q> and block:
-					</p>
-					<blockquote cite="http://searchservervirtualization.techtarget.com/definition/Our-Favorite-Technology-Quotations">
-						&ldquo;For years there has been a theory that millions of monkeys typing at random on millions of typewriters would
-						reproduce the entire works of Shakespeare. The Internet has proven this theory to be untrue.&rdquo;
-					</blockquote>
-				</section>
-
-				<section>
-					<h2>Intergalactic Interconnections</h2>
-					<p>
-						You can link between slides internally,
-						<a href="#/2/3">like this</a>.
-					</p>
-				</section>
-
-				<section>
-					<h2>Speaker View</h2>
-					<p>There's a <a href="https://github.com/hakimel/reveal.js#speaker-notes">speaker view</a>. It includes a timer, preview of the upcoming slide as well as your speaker notes.</p>
-					<p>Press the <em>S</em> key to try it out.</p>
-
-					<aside class="notes">
-						Oh hey, these are some notes. They'll be hidden in your presentation, but you can see them if you open the speaker notes window (hit 's' on your keyboard).
-					</aside>
-				</section>
-
-				<section>
 					<h2>Export to PDF</h2>
 					<p>Presentations can be <a href="https://github.com/hakimel/reveal.js#pdf-export">exported to PDF</a>, here's an example:</p>
 					<iframe data-src="https://www.slideshare.net/slideshow/embed_code/42840540" width="445" height="355" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="border:3px solid #666; margin-bottom:5px; max-width: 100%;" allowfullscreen> </iframe>
@@ -266,32 +264,6 @@ Reveal.addEventListener( 'customevent', function() {
 	console.log( '"customevent" has fired' );
 } );
 					</code></pre>
-				</section>
-
-				<section>
-					<h2>Take a Moment</h2>
-					<p>
-						Press B or . on your keyboard to pause the presentation. This is helpful when you're on stage and want to take distracting slides off the screen.
-					</p>
-				</section>
-
-				<section>
-					<h2>Much more</h2>
-					<ul>
-						<li>Right-to-left support</li>
-						<li><a href="https://github.com/hakimel/reveal.js#api">Extensive JavaScript API</a></li>
-						<li><a href="https://github.com/hakimel/reveal.js#auto-sliding">Auto-progression</a></li>
-						<li><a href="https://github.com/hakimel/reveal.js#parallax-background">Parallax backgrounds</a></li>
-						<li><a href="https://github.com/hakimel/reveal.js#keyboard-bindings">Custom keyboard bindings</a></li>
-					</ul>
-				</section>
-
-				<section style="text-align: left;">
-					<h1>THE END</h1>
-					<p>
-						- <a href="http://slides.com">Try the online editor</a> <br>
-						- <a href="https://github.com/hakimel/reveal.js">Source code &amp; documentation</a>
-					</p>
 				</section>
 
 			</div>
